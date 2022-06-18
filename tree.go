@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"log"
 	"net/url"
@@ -19,17 +20,42 @@ type Node struct {
 	Children []Node
 }
 
+var (
+	withParams bool
+	inFile     string
+)
+
 func main() {
+	flag.StringVar(&inFile, "f", "", "file to read (instead of just piping stdout to urltree)")
+	flag.BoolVar(&withParams, "p", false, "include any parameters passed the URL")
+	flag.Parse()
+
 	sites := make(Sites)
 	trees := make(Nodes)
-	scanner := bufio.NewScanner(os.Stdin)
+	var scanner *bufio.Scanner
+	if inFile != "" {
+		file, err := os.Open(inFile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer file.Close()
+		scanner = bufio.NewScanner(file)
+	} else {
+		scanner = bufio.NewScanner(os.Stdin)
+	}
+
 	for scanner.Scan() {
 		line := scanner.Text()
 		if len(line) < 10 {
 			continue
 		}
 		if strings.Contains(line, "?") {
-			line = strings.Split(line, "?")[0]
+			if withParams {
+				line = strings.Replace(line, "?", "/", 1)
+			} else {
+				line = strings.Split(line, "?")[0]
+			}
+
 		}
 		line = strings.TrimRight(line, "/")
 		u, err := url.Parse(line)
@@ -55,6 +81,7 @@ func main() {
 	if err := scanner.Err(); err != nil {
 		log.Println(err)
 	}
+
 	for site, pths := range sites {
 		for i := range pths {
 			trees[site] = AddToTree(trees[site], strings.Split(sites[site][i], "/"))
@@ -75,6 +102,12 @@ func main() {
 }
 
 func parseNode(ascnode *asciitree.Node, node Node) {
+	if node.Name == "" {
+		node.Name = "/"
+	}
+	if strings.Contains(node.Name, "=") {
+		node.Name = "?" + node.Name
+	}
 	newn := ascnode.AddDir(node.Name)
 	for _, c := range node.Children {
 		parseNode(newn, c)
