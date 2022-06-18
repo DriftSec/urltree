@@ -1,6 +1,13 @@
 
 This is just a simple command line tool to format a list of URLS into a tree for review.
 
+#### Usage:
+```
+Usage of urltree:
+  -f string    file to read (instead of just piping stdout to urltree)
+  -p           include any parameters passed the URL
+ ```
+
 #### urls.txt:
 ```
 https://www.test.com/content/assets/css/colorbox.css
